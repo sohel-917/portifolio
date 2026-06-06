@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { 
   ArrowRight, 
@@ -17,29 +17,10 @@ import {
   FileText,
   ExternalLink
 } from "lucide-react";
-import { Project } from "../types";
-import { api } from "../api";
-import ProjectCard from "../components/ProjectCard";
 
 export default function Home() {
-  const [featuredProjects, setFeaturedProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
-
-  useEffect(() => {
-    // Fetch projects and retrieve the featured ones
-    api.getProjects()
-      .then((data) => {
-        // Take either featured ones or the first 2-3 projects
-        const featured = data.filter((p) => p.featured);
-        setFeaturedProjects(featured.length > 0 ? featured.slice(0, 3) : data.slice(0, 3));
-      })
-      .catch((err) => {
-        console.error("Home page project fetch failed:", err);
-      })
-      .finally(() => setLoading(false));
-  }, []);
 
   const resumeTextContent = `========================================================================
                              SHAIK SOHEL
@@ -500,10 +481,10 @@ TOOLS & DEVOPS:
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <Link
-            to="/projects"
+            to="/skills"
             className="flex items-center space-x-2 px-6 py-3.5 rounded-xl text-white font-semibold text-sm tracking-wide shadow-lg shadow-sky-505/20 hover:shadow-xl hover:scale-[1.02] transition-all cursor-pointer accent-gradient"
           >
-            <span>Explore My Work</span>
+            <span>Browse My Skills</span>
             <ArrowRight className="h-4 w-4" />
           </Link>
 
@@ -524,53 +505,12 @@ TOOLS & DEVOPS:
           </div>
           <div className="bg-white/60 dark:bg-slate-900/40 p-5 rounded-3xl border border-slate-150 dark:border-slate-800/80 backdrop-blur-sm dark:glass">
             <div className="font-display font-black text-3xl md:text-4xl text-indigo-600 dark:text-indigo-405">95%</div>
-            <div className="text-xs font-mono font-bold tracking-widest text-slate-400 uppercase mt-1">Intermediate Science</div>
+            <div className="text-xs font-mono font-bold tracking-widest text-slate-405 uppercase mt-1">Intermediate Science</div>
           </div>
           <div className="bg-white/60 dark:bg-slate-900/40 p-5 rounded-3xl border border-slate-150 dark:border-slate-800/80 backdrop-blur-sm dark:glass">
             <div className="font-display font-black text-3xl md:text-4xl text-purple-600 dark:text-indigo-400">100%</div>
             <div className="text-xs font-mono font-bold tracking-widest text-slate-400 uppercase mt-1">Practical Build Logic</div>
           </div>
-        </div>
-      </section>
-
-      {/* Featured Projects Highlight Block */}
-      <section className="bg-slate-50/50 dark:bg-slate-950/20 py-20 border-t border-b border-slate-150 dark:border-slate-800/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
-            <div>
-              <div className="text-xs font-mono font-bold tracking-widest text-sky-600 dark:text-sky-400 uppercase flex items-center gap-2 mb-2">
-                <Star className="h-4 w-4 fill-sky-600 text-sky-600 dark:fill-sky-455 dark:text-sky-455" />
-                <span>Showcase Portfolio</span>
-              </div>
-              <h2 className="font-display font-extrabold text-3xl md:text-4xl text-slate-900 dark:text-white tracking-tight">
-                Featured Engineering Projects
-              </h2>
-            </div>
-            <Link
-              to="/projects"
-              className="group flex items-center space-x-1.5 text-sky-600 dark:text-sky-405 text-sm font-semibold hover:underline"
-            >
-              <span>View all projects</span>
-              <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
-
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-12 space-y-3">
-              <div className="w-10 h-10 border-4 border-sky-600 border-t-transparent dark:border-sky-400 dark:border-t-transparent rounded-full animate-spin" />
-              <p className="font-mono text-sm text-slate-550">Querying database schema...</p>
-            </div>
-          ) : featuredProjects.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {featuredProjects.map((project) => (
-                <ProjectCard key={project._id || project.id} project={project} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 p-8 border border-dashed border-slate-250 dark:border-slate-800 rounded-3xl bg-white dark:bg-slate-900/60 dark:glass">
-              <p className="text-slate-500 font-mono text-sm">No projects currently synced with db collections.</p>
-            </div>
-          )}
         </div>
       </section>
 

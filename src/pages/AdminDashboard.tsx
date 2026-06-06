@@ -21,7 +21,6 @@ import {
 } from "lucide-react";
 import { api } from "../api";
 import { Project, Contact } from "../types";
-import ProjectCard from "../components/ProjectCard";
 
 export default function AdminDashboard() {
   const [token, setToken] = useState(() => localStorage.getItem("adminToken") || "");
@@ -31,7 +30,7 @@ export default function AdminDashboard() {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Console Panel State
-  const [activeTab, setActiveTab] = useState<"projects" | "inbox">("projects");
+  const [activeTab, setActiveTab] = useState<"projects" | "inbox">("inbox");
   const [projects, setProjects] = useState<Project[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [dbStatus, setDbStatus] = useState<any>(null);
@@ -403,7 +402,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Numerical Metrics summary panel */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Metric 1 */}
         <div className="p-5 bg-white dark:bg-slate-900/40 border border-slate-150 dark:border-slate-800/80 rounded-2xl shadow-sm dark:glass">
           <div className="flex justify-between items-start text-slate-400 dark:text-slate-505 mb-2">
@@ -419,18 +418,6 @@ export default function AdminDashboard() {
         {/* Metric 2 */}
         <div className="p-5 bg-white dark:bg-slate-900/40 border border-slate-150 dark:border-slate-800/80 rounded-2xl shadow-sm dark:glass">
           <div className="flex justify-between items-start text-slate-400 dark:text-slate-505 mb-2">
-            <span className="text-xs font-bold font-mono uppercase tracking-wider">Active projects</span>
-            <FolderGit2 className="h-5 w-5 text-indigo-400" />
-          </div>
-          <div className="font-display font-black text-3xl text-slate-900 dark:text-white">
-            {projects.length}
-          </div>
-          <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-1">Full CRUD control permissions set</div>
-        </div>
-
-        {/* Metric 3 */}
-        <div className="p-5 bg-white dark:bg-slate-900/40 border border-slate-150 dark:border-slate-800/80 rounded-2xl shadow-sm dark:glass">
-          <div className="flex justify-between items-start text-slate-400 dark:text-slate-505 mb-2">
             <span className="text-xs font-bold font-mono uppercase tracking-wider">Inquiries Received</span>
             <Inbox className="h-5 w-5 text-emerald-450" />
           </div>
@@ -440,7 +427,7 @@ export default function AdminDashboard() {
           <div className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-1">Real-time visitor messages logged</div>
         </div>
 
-        {/* Metric 4 */}
+        {/* Metric 3 */}
         <div className="p-5 bg-white dark:bg-slate-900/40 border border-slate-150 dark:border-slate-800/80 rounded-2xl shadow-sm dark:glass">
           <div className="flex justify-between items-start text-slate-400 dark:text-slate-505 mb-2">
             <span className="text-xs font-bold font-mono uppercase tracking-wider">Node REST API</span>
@@ -453,74 +440,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Tabs list with content triggers */}
       <div className="space-y-6">
-        <div className="flex items-center space-x-2 border-b border-slate-150 dark:border-slate-800 pb-px font-sans">
-          <button
-            onClick={() => setActiveTab("projects")}
-            className={`pb-2.5 text-sm font-semibold border-b-2 px-2.5 transition-all cursor-pointer ${
-              activeTab === "projects"
-                ? "border-sky-500 text-sky-600 dark:border-sky-400 dark:text-sky-300"
-                : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
-            }`}
-          >
-            Manage Projects ({projects.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("inbox")}
-            className={`pb-2.5 text-sm font-semibold border-b-2 px-2.5 transition-all cursor-pointer ${
-              activeTab === "inbox"
-                ? "border-sky-500 text-sky-600 dark:border-sky-400 dark:text-sky-305"
-                : "border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
-            }`}
-          >
-            Inbox Messages ({contacts.length})
-          </button>
-        </div>
-
-        {/* TAB 1: MANAGE PROJECTS */}
-        {/* TAB 1: MANAGE PROJECTS */}
-        {activeTab === "projects" && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between font-sans">
-              <h2 className="font-display font-bold text-slate-900 dark:text-white text-lg tracking-tight">
-                Project Resources
-              </h2>
-              <button
-                onClick={openAddModal}
-                className="flex items-center space-x-1.5 px-4 py-2 text-white font-semibold text-xs rounded-xl tracking-wide shadow hover:scale-[1.01] transition-transform cursor-pointer accent-gradient"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Add Portfolio Project</span>
-              </button>
-            </div>
-
-            {isLoadingData ? (
-              <div className="flex flex-col items-center justify-center py-12 space-y-3">
-                <RefreshCw className="h-8 w-8 text-sky-500 animate-spin" />
-                <p className="text-xs font-mono text-slate-500">Communicating with Schema Repository...</p>
-              </div>
-            ) : projects.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {projects.map((proj) => (
-                  <div key={proj._id || proj.id} className="relative">
-                    <ProjectCard
-                      project={proj}
-                      isAdminMode={true}
-                      onEdit={openEditModal}
-                      onDelete={handleDeleteProject}
-                    />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-16 p-8 border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl bg-slate-50/50 dark:bg-slate-900/30 dark:glass">
-                <FolderGit2 className="h-10 w-10 text-slate-400 mx-auto mb-2" />
-                <p className="text-sm font-mono text-slate-505">No project documents stored in collections right now.</p>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* TAB 2: INBOX INQUIRIES MESSAGES */}
         {activeTab === "inbox" && (

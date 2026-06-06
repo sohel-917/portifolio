@@ -1,0 +1,6 @@
+{
+  "name": "Shaik Sohel Portfolio",
+  "description": "Personal Portfolio Website of Shaik Sohel, a B.Tech Artificial Intelligence student displaying projects, education, skills, and admin dashboard",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

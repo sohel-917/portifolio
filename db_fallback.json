@@ -1,0 +1,52 @@
+{
+  "users": [
+    {
+      "id": "u_1",
+      "email": "sks510805@gmail.com",
+      "password": "$2b$10$QD9sVykR3h.zp2TR38j0w.NYXJ1T0vM5ngP8fSlVQziz2sRs29REG",
+      "name": "Shaik Sohel"
+    }
+  ],
+  "projects": [
+    {
+      "id": "proj_1",
+      "title": "Type Master",
+      "description": "An interactive, beautiful typing practice application designed to calculate real-time typing speed (WPM) and accuracy, and visualize performance improvements dynamically.",
+      "longDescription": "Type Master is a heavy-duty typing tutor featuring progress tracking, multiple difficulty levels, live charts for accuracy and speed metrics, custom paragraphs, and responsive layout. Created to help developers and students boost their typing accuracy and speed over time.",
+      "category": "Web Application",
+      "technologies": [
+        "React.js",
+        "Tailwind CSS",
+        "TypeScript",
+        "Motion",
+        "LocalStorage"
+      ],
+      "githubUrl": "https://github.com/sohel-917/type-master.git",
+      "liveUrl": "https://typetext2.vercel.app/",
+      "imageUrl": "https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&q=80&w=600",
+      "featured": true,
+      "createdAt": "2026-06-05T09:01:57.569Z"
+    },
+    {
+      "id": "proj_2",
+      "title": "Personalized Financial Behaviour Analyzer",
+      "description": "An AI-powered fintech application that parses monthly spend statements, identifies category-wise anomalies, detects overspending, and provides custom recommendations.",
+      "longDescription": "This advanced fintech application integrates behavioral financial models with AI-driven analytics. Users can enter transaction sets, visual dashboards compute budget health scores, detect risky behavior patterns, and receive high-impact recommendations to improve their credit rating.",
+      "category": "Artificial Intelligence & Fintech",
+      "technologies": [
+        "React.js",
+        "Node.js",
+        "Express.js",
+        "Mongoose",
+        "Tailwind CSS",
+        "Recharts"
+      ],
+      "githubUrl": "https://github.com/sohel-917/behaviour-analyzer.git",
+      "liveUrl": "https://behaviour-analyzer.vercel.app/",
+      "imageUrl": "https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&q=80&w=600",
+      "featured": true,
+      "createdAt": "2026-06-05T09:01:57.569Z"
+    }
+  ],
+  "contacts": []
+}

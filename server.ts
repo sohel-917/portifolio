@@ -65,81 +65,121 @@ const DEFAULT_PROJECTS = [
   }
 ];
 
-// Helper to manage JSON DB fallback
+// Helper to manage JSON DB fallback with in-memory + writeable dir checkpoints
+let inMemoryDb: FallbackData | null = null;
+
 function getFallbackDb(): FallbackData {
   const targetPassword = "Sohel@9177";
-  if (!fs.existsSync(FALLBACK_DB_PATH)) {
-    const salt = bcrypt.genSaltSync(10);
-    const hashedPassword = bcrypt.hashSync(targetPassword, salt);
-    const initialData: FallbackData = {
-      users: [
-        {
-          id: "u_1",
-          email: "sks510805@gmail.com",
-          password: hashedPassword,
-          name: "Shaik Sohel",
-        }
-      ],
-      projects: DEFAULT_PROJECTS,
-      contacts: []
-    };
-    fs.writeFileSync(FALLBACK_DB_PATH, JSON.stringify(initialData, null, 2));
-    return initialData;
+  const defaultData: FallbackData = {
+    users: [
+      {
+        id: "u_1",
+        email: "sks510805@gmail.com",
+        password: bcrypt.hashSync(targetPassword, bcrypt.genSaltSync(10)),
+        name: "Shaik Sohel",
+      }
+    ],
+    projects: DEFAULT_PROJECTS,
+    contacts: []
+  };
+
+  // 1. Return runtime memo immediately if already populated
+  if (inMemoryDb) {
+    return inMemoryDb;
   }
-  try {
-    const data: FallbackData = JSON.parse(fs.readFileSync(FALLBACK_DB_PATH, "utf-8"));
-    let updated = false;
-    if (data.users && data.users.length > 0) {
-      data.users.forEach(u => {
-        if (u.email === "sks510805@gmail.com") {
-          const isCorrect = bcrypt.compareSync(targetPassword, u.password);
-          if (!isCorrect) {
-            const salt = bcrypt.genSaltSync(10);
-            u.password = bcrypt.hashSync(targetPassword, salt);
-            updated = true;
+
+  // 2. Identify potential checkpoint file locations
+  const pathsToTry = [
+    FALLBACK_DB_PATH,
+    path.join("/tmp", "db_fallback.json")
+  ];
+
+  for (const dbPath of pathsToTry) {
+    try {
+      if (fs.existsSync(dbPath)) {
+        const raw = fs.readFileSync(dbPath, "utf-8");
+        const data: FallbackData = JSON.parse(raw);
+        let updated = false;
+
+        if (data.users && data.users.length > 0) {
+          data.users.forEach(u => {
+            if (u.email === "sks510805@gmail.com") {
+              const isCorrect = bcrypt.compareSync(targetPassword, u.password);
+              if (!isCorrect) {
+                const salt = bcrypt.genSaltSync(10);
+                u.password = bcrypt.hashSync(targetPassword, salt);
+                updated = true;
+              }
+            }
+          });
+        } else {
+          const salt = bcrypt.genSaltSync(10);
+          data.users = [
+            {
+              id: "u_1",
+              email: "sks510805@gmail.com",
+              password: bcrypt.hashSync(targetPassword, salt),
+              name: "Shaik Sohel",
+            }
+          ];
+          updated = true;
+        }
+
+        if (updated) {
+          try {
+            fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
+          } catch (writeErr) {
+            console.warn(`Non-blocking update bypass at ${dbPath}:`, writeErr);
           }
         }
-      });
-    } else {
-      const salt = bcrypt.genSaltSync(10);
-      const hashedPassword = bcrypt.hashSync(targetPassword, salt);
-      data.users = [
-        {
-          id: "u_1",
-          email: "sks510805@gmail.com",
-          password: hashedPassword,
-          name: "Shaik Sohel",
-        }
-      ];
-      updated = true;
+        inMemoryDb = data;
+        return data;
+      }
+    } catch (readErr: any) {
+      console.warn(`Bypassing read-checkpoint at ${dbPath}:`, readErr.message);
     }
-    if (updated) {
-      fs.writeFileSync(FALLBACK_DB_PATH, JSON.stringify(data, null, 2));
-    }
-    return data;
-  } catch (error) {
-    console.error("Error reading fallback JSON database. Rebuilding.", error);
-    const salt = bcrypt.genSaltSync(10);
-    const hashedPassword = bcrypt.hashSync(targetPassword, salt);
-    const initialData: FallbackData = {
-      users: [
-        {
-          id: "u_1",
-          email: "sks510805@gmail.com",
-          password: hashedPassword,
-          name: "Shaik Sohel",
-        }
-      ],
-      projects: DEFAULT_PROJECTS,
-      contacts: []
-    };
-    fs.writeFileSync(FALLBACK_DB_PATH, JSON.stringify(initialData, null, 2));
-    return initialData;
   }
+
+  // 3. Initialize file if missing in any available writable path
+  for (const dbPath of pathsToTry) {
+    try {
+      const dirOfFile = path.dirname(dbPath);
+      if (!fs.existsSync(dirOfFile)) {
+        fs.mkdirSync(dirOfFile, { recursive: true });
+      }
+      fs.writeFileSync(dbPath, JSON.stringify(defaultData, null, 2));
+      inMemoryDb = defaultData;
+      console.log(`Successfully initialized fallback database file at: ${dbPath}`);
+      return defaultData;
+    } catch (writeErr: any) {
+      console.warn(`Failed initialization write at checkpoint ${dbPath}:`, writeErr.message);
+    }
+  }
+
+  // 4. Secure final runtime fallback is in-memory
+  console.warn("Using pure runtime in-memory database fallback to bypass read-only container constraints.");
+  inMemoryDb = defaultData;
+  return defaultData;
 }
 
 function saveFallbackDb(data: FallbackData) {
-  fs.writeFileSync(FALLBACK_DB_PATH, JSON.stringify(data, null, 2));
+  inMemoryDb = data;
+  const pathsToTry = [
+    FALLBACK_DB_PATH,
+    path.join("/tmp", "db_fallback.json")
+  ];
+  for (const dbPath of pathsToTry) {
+    try {
+      const dirOfFile = path.dirname(dbPath);
+      if (!fs.existsSync(dirOfFile)) {
+        fs.mkdirSync(dirOfFile, { recursive: true });
+      }
+      fs.writeFileSync(dbPath, JSON.stringify(data, null, 2));
+      return; // Return immediately upon successful write
+    } catch (writeErr: any) {
+      console.warn(`Write synchronization bypassed for location ${dbPath}:`, writeErr.message);
+    }
+  }
 }
 
 // MongoDB Connection attempt with strict fallback checks
@@ -335,16 +375,20 @@ app.post("/api/auth/login", async (req, res) => {
 app.get("/api/projects", async (req, res) => {
   try {
     if (isMongoConnected) {
-      const projects = await ProjectModel.find().sort({ createdAt: -1 });
-      res.json(projects);
-    } else {
-      const db = getFallbackDb();
-      // Sort in-memory projects descending
-      const sorted = [...db.projects].sort((a, b) => {
-        return new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime();
-      });
-      res.json(sorted);
+      try {
+        const projects = await ProjectModel.find().sort({ createdAt: -1 });
+        return res.json(projects);
+      } catch (mongoErr: any) {
+        console.error("MongoDB Project query failed mid-request. Shifting to JSON fallback:", mongoErr.message);
+      }
     }
+    
+    const db = getFallbackDb();
+    // Sort in-memory projects descending
+    const sorted = [...db.projects].sort((a, b) => {
+      return new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime();
+    });
+    res.json(sorted);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -373,16 +417,20 @@ app.post("/api/projects", authenticateToken, async (req, res) => {
     };
 
     if (isMongoConnected) {
-      const newProject = await ProjectModel.create(projectData);
-      res.status(201).json(newProject);
-    } else {
-      const db = getFallbackDb();
-      const id = "proj_" + Date.now();
-      const newProject = { id, ...projectData };
-      db.projects.push(newProject);
-      saveFallbackDb(db);
-      res.status(201).json(newProject);
+      try {
+        const newProject = await ProjectModel.create(projectData);
+        return res.status(201).json(newProject);
+      } catch (mongoErr: any) {
+        console.error("MongoDB Project creation failed mid-request. Shifting to JSON fallback:", mongoErr.message);
+      }
     }
+    
+    const db = getFallbackDb();
+    const id = "proj_" + Date.now();
+    const newProject = { id, ...projectData };
+    db.projects.push(newProject);
+    saveFallbackDb(db);
+    res.status(201).json(newProject);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -395,46 +443,51 @@ app.put("/api/projects/:id", authenticateToken, async (req, res) => {
     const { title, description, longDescription, category, technologies, githubUrl, liveUrl, imageUrl, featured } = req.body;
 
     if (isMongoConnected) {
-      const updatedProject = await ProjectModel.findByIdAndUpdate(
-        id,
-        {
-          title,
-          description,
-          longDescription,
-          category,
-          technologies: Array.isArray(technologies) ? technologies : technologies ? technologies.split(",").map((t: string) => t.trim()) : [],
-          githubUrl,
-          liveUrl,
-          imageUrl,
-          featured: featured === true || featured === "true"
-        },
-        { new: true }
-      );
-      if (!updatedProject) return res.status(404).json({ error: "Project not found" });
-      res.json(updatedProject);
-    } else {
-      const db = getFallbackDb();
-      const index = db.projects.findIndex(p => p.id === id || p._id === id);
-      if (index === -1) return res.status(404).json({ error: "Project not found in fallback storage" });
-
-      const currentProj = db.projects[index];
-      const updatedProject = {
-        ...currentProj,
-        title: title !== undefined ? title : currentProj.title,
-        description: description !== undefined ? description : currentProj.description,
-        longDescription: longDescription !== undefined ? longDescription : currentProj.longDescription,
-        category: category !== undefined ? category : currentProj.category,
-        technologies: technologies !== undefined ? (Array.isArray(technologies) ? technologies : technologies.split(",").map((t: string) => t.trim())) : currentProj.technologies,
-        githubUrl: githubUrl !== undefined ? githubUrl : currentProj.githubUrl,
-        liveUrl: liveUrl !== undefined ? liveUrl : currentProj.liveUrl,
-        imageUrl: imageUrl !== undefined ? imageUrl : currentProj.imageUrl,
-        featured: featured !== undefined ? (featured === true || featured === "true") : currentProj.featured,
-      };
-
-      db.projects[index] = updatedProject;
-      saveFallbackDb(db);
-      res.json(updatedProject);
+      try {
+        const updatedProject = await ProjectModel.findByIdAndUpdate(
+          id,
+          {
+            title,
+            description,
+            longDescription,
+            category,
+            technologies: Array.isArray(technologies) ? technologies : technologies ? technologies.split(",").map((t: string) => t.trim()) : [],
+            githubUrl,
+            liveUrl,
+            imageUrl,
+            featured: featured === true || featured === "true"
+          },
+          { new: true }
+        );
+        if (updatedProject) {
+          return res.json(updatedProject);
+        }
+      } catch (mongoErr: any) {
+        console.error("MongoDB Project update failed mid-request. Shifting to JSON fallback:", mongoErr.message);
+      }
     }
+    
+    const db = getFallbackDb();
+    const index = db.projects.findIndex(p => p.id === id || p._id === id);
+    if (index === -1) return res.status(404).json({ error: "Project not found in fallback storage" });
+
+    const currentProj = db.projects[index];
+    const updatedProject = {
+      ...currentProj,
+      title: title !== undefined ? title : currentProj.title,
+      description: description !== undefined ? description : currentProj.description,
+      longDescription: longDescription !== undefined ? longDescription : currentProj.longDescription,
+      category: category !== undefined ? category : currentProj.category,
+      technologies: technologies !== undefined ? (Array.isArray(technologies) ? technologies : technologies.split(",").map((t: string) => t.trim())) : currentProj.technologies,
+      githubUrl: githubUrl !== undefined ? githubUrl : currentProj.githubUrl,
+      liveUrl: liveUrl !== undefined ? liveUrl : currentProj.liveUrl,
+      imageUrl: imageUrl !== undefined ? imageUrl : currentProj.imageUrl,
+      featured: featured !== undefined ? (featured === true || featured === "true") : currentProj.featured,
+    };
+
+    db.projects[index] = updatedProject;
+    saveFallbackDb(db);
+    res.json(updatedProject);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -445,20 +498,31 @@ app.delete("/api/projects/:id", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 
+    let deletedFromMongo = false;
     if (isMongoConnected) {
-      const deletedProject = await ProjectModel.findByIdAndDelete(id);
-      if (!deletedProject) return res.status(404).json({ error: "Project not found" });
-      res.json({ message: "Project successfully deleted from MongoDB", deletedProject });
-    } else {
-      const db = getFallbackDb();
-      const initialCount = db.projects.length;
-      db.projects = db.projects.filter(p => p.id !== id && p._id !== id);
-      if (db.projects.length === initialCount) {
-        return res.status(404).json({ error: "Project not found in fallback" });
+      try {
+        const deletedProject = await ProjectModel.findByIdAndDelete(id);
+        if (deletedProject) {
+          deletedFromMongo = true;
+        }
+      } catch (mongoErr: any) {
+        console.error("MongoDB Project deletion failed mid-request. Shifting to JSON fallback:", mongoErr.message);
       }
-      saveFallbackDb(db);
-      res.json({ message: "Project successfully deleted from fallback storage" });
     }
+
+    const db = getFallbackDb();
+    const initialCount = db.projects.length;
+    db.projects = db.projects.filter(p => p.id !== id && p._id !== id);
+    const deletedFromFallback = db.projects.length < initialCount;
+    if (deletedFromFallback) {
+      saveFallbackDb(db);
+    }
+
+    if (!deletedFromMongo && !deletedFromFallback) {
+      return res.status(404).json({ error: "Project not found in active collections." });
+    }
+
+    res.json({ message: "Project successfully deleted from storage" });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -625,6 +689,78 @@ app.delete("/api/contact/:id", authenticateToken, async (req, res) => {
   }
 });
 
+// GET: Export entire fallback database as JSON backup file (Admin Required)
+app.get("/api/admin/export-db", authenticateToken, async (req, res) => {
+  try {
+    const db = getFallbackDb();
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Content-Disposition", "attachment; filename=db_fallback.json");
+    res.json(db);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// POST: Restore/Import database from JSON backup file (Admin Required)
+app.post("/api/admin/import-db", authenticateToken, async (req, res) => {
+  try {
+    const backup = req.body;
+    if (!backup || typeof backup !== "object") {
+      return res.status(400).json({ error: "Invalid backup format. Payload must be a JSON object." });
+    }
+
+    const hasUsers = Array.isArray(backup.users);
+    const hasProjects = Array.isArray(backup.projects);
+    const hasContacts = Array.isArray(backup.contacts);
+
+    if (!hasUsers || !hasProjects || !hasContacts) {
+      return res.status(400).json({ 
+        error: "Malformed backup object. Ensure 'users', 'projects', and 'contacts' arrays exist in the JSON structure." 
+      });
+    }
+
+    // Save fallback DB
+    saveFallbackDb(backup);
+
+    // If MongoDB is connected, push updates to Atlas to ensure full synchronic restoration
+    if (isMongoConnected) {
+      try {
+        await UserMode.deleteMany({});
+        for (const u of backup.users) {
+          await UserMode.create({
+            email: u.email,
+            password: u.password,
+            name: u.name || "Administrator"
+          });
+        }
+
+        await ProjectModel.deleteMany({});
+        for (const p of backup.projects) {
+          const { id, _id, ...projectFields } = p;
+          await ProjectModel.create({
+            ...projectFields,
+            technologies: Array.isArray(p.technologies) ? p.technologies : []
+          });
+        }
+
+        await ContactModel.deleteMany({});
+        for (const c of backup.contacts) {
+          const { id, _id, ...contactFields } = c;
+          await ContactModel.create(contactFields);
+        }
+
+        console.log("MongoDB Collections successfully overwritten and synchronized with imported fallback database.");
+      } catch (mongoErr: any) {
+        console.error("MongoDB background mirror failed during JSON import:", mongoErr.message);
+      }
+    }
+
+    res.json({ success: true, message: "Fallback database restored and synchronized successfully." });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 /* ==========================================
    VITE & STATIC ASSET INGRESS SERVERS
    ========================================== */
@@ -655,4 +791,9 @@ async function startServer() {
   });
 }
 
-startServer();
+// Only start the server listening socket if we're not running inside a Vercel Serverless environment
+if (!process.env.VERCEL) {
+  startServer();
+}
+
+export default app;

@@ -69,5 +69,20 @@ export const api = {
   login: async (email: string, password: string): Promise<AuthResponse> => {
     const res = await apiClient.post("/auth/login", { email, password });
     return res.data;
-  }
+  },
+
+  // Database backup import & export
+  exportDb: async (token: string): Promise<any> => {
+    const res = await apiClient.get("/admin/export-db", {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return res.data;
+  },
+
+  importDb: async (backupData: any, token: string): Promise<{ success: boolean; message: string }> => {
+    const res = await apiClient.post("/admin/import-db", backupData, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return res.data;
+  },
 };

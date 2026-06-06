@@ -15,7 +15,9 @@ import {
   AlertCircle, 
   RefreshCw, 
   X,
-  FileText
+  FileText,
+  Download,
+  Upload
 } from "lucide-react";
 import { api } from "../api";
 import { Project, Contact } from "../types";
@@ -220,6 +222,51 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleExportBackup = async () => {
+    try {
+      const data = await api.exportDb(token);
+      const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
+        JSON.stringify(data, null, 2)
+      )}`;
+      const downloadAnchor = document.createElement("a");
+      downloadAnchor.setAttribute("href", jsonString);
+      downloadAnchor.setAttribute("download", "db_fallback.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    } catch (err) {
+      console.error("Backup export failure:", err);
+      alert("Failed to export database backup. Check server log.");
+    }
+  };
+
+  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileReader = new FileReader();
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    fileReader.onload = async (event) => {
+      try {
+        const text = event.target?.result;
+        if (typeof text !== "string") throw new Error("Parsed content is invalid");
+        const parsed = JSON.parse(text);
+
+        if (!confirm("Caution: Restoring backup will overwrite all active portfolio projects, contact logs, and login user credentials. Do you wish to proceed?")) {
+          return;
+        }
+
+        const res = await api.importDb(parsed, token);
+        alert(res.message || "Database backup restored successfully");
+        await loadConsoleData();
+      } catch (err: any) {
+        console.error("Backup restoration failure:", err);
+        alert("Failed to restore backup: " + (err.message || "Invalid JSON structure. Ensure file matches db_fallback.json format."));
+      }
+    };
+    fileReader.readAsText(file);
+    e.target.value = "";
+  };
+
   /* =========================================================
      LOGIN SCREEN OVERLAY (IF NOT AUTHENTICATED)
      ========================================================= */
@@ -314,7 +361,30 @@ export default function AdminDashboard() {
         </div>
 
         {/* Console Action buttons */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={handleExportBackup}
+            title="Download DB Backup (db_fallback.json)"
+            className="flex items-center space-x-1.5 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl transition-all cursor-pointer dark:glass"
+          >
+            <Download className="h-4 w-4" />
+            <span>Export Backup</span>
+          </button>
+          
+          <label
+            title="Upload and restore fallback database file"
+            className="flex items-center space-x-1.5 px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl transition-all cursor-pointer dark:glass"
+          >
+            <Upload className="h-4 w-4" />
+            <span>Import Backup</span>
+            <input
+              type="file"
+              accept=".json"
+              onChange={handleImportBackup}
+              className="hidden"
+            />
+          </label>
+
           <button
             onClick={loadConsoleData}
             title="Reload backend schemas"
